@@ -54,6 +54,8 @@ class MainActivity : AppCompatActivity() {
     private var clicked = false
     private val REQUEST_IMAGE_CAPTURE = 1
     private val REQUEST_IMAGE_PICK = 2
+    private var currentPhotoPath: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -150,7 +152,7 @@ class MainActivity : AppCompatActivity() {
                     photoFile?.also {
                         val photoURI: Uri = FileProvider.getUriForFile(
                             this,
-                            "com.example.camera.provider",
+                            "com.example.camera.fileprovider",
                             it
                         )
                         takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
@@ -161,15 +163,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private lateinit var currentPhotoPath: String
-
     @SuppressLint("SimpleDateFormat")
     @Throws(IOException::class)
     private fun createImageFile(): File {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
         val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
         return File.createTempFile(
-            timeStamp,
+            "JPEG_" + timeStamp + "_",
             ".jpg",
             storageDir
         ).apply {

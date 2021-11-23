@@ -32,7 +32,7 @@
         </activity>
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.example.camera.provider"
+            android:authorities="com.example.camera.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
