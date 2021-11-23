@@ -14,12 +14,10 @@ import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.widget.ImageView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.io.File
 import java.io.IOException
-import java.net.URI
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -49,15 +47,16 @@ class MainActivity : AppCompatActivity() {
             R.anim.to_bot_anim
         )
     }
-
     private var clicked = false
     private val REQUEST_IMAGE_CAPTURE = 1
+    private val REQUEST_IMAGE_PICK = 2
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         val add = findViewById<FloatingActionButton>(R.id.fab_add)
         val capture = findViewById<FloatingActionButton>(R.id.fab_pic)
         val upload = findViewById<FloatingActionButton>(R.id.fab_upload)
+        val img = findViewById<FloatingActionButton>(R.id.fab_galery)
 
         add.setOnClickListener{
             setVisibility(clicked)
@@ -66,17 +65,16 @@ class MainActivity : AppCompatActivity() {
             (!clicked).also { clicked = it }
         }
         capture.setOnClickListener{
-//            Toast.makeText(this, "Capture a Picture", Toast.LENGTH_SHORT).show()
-            try {
-                dispatchTakePictureIntent()
-            }catch (e: ActivityNotFoundException){
-                e.printStackTrace()
-            }
+//          Toast.makeText(this, "Capture a Picture", Toast.LENGTH_SHORT).show()
+            dispatchTakePictureIntent()
 
 
         }
         upload.setOnClickListener{
             setPictureInApp()
+        }
+        img.setOnClickListener{
+            galleryAddPic()
         }
 
     }
@@ -84,13 +82,16 @@ class MainActivity : AppCompatActivity() {
     private fun setVisibility(clicked: Boolean) {
         val capture = findViewById<FloatingActionButton>(R.id.fab_pic)
         val upload = findViewById<FloatingActionButton>(R.id.fab_upload)
+        val img = findViewById<FloatingActionButton>(R.id.fab_galery)
         if(!clicked) {
             capture.visibility = View.VISIBLE
             upload.visibility= View.VISIBLE
+            img.visibility = View.VISIBLE
         }
          else{
             capture.visibility = View.INVISIBLE
             upload.visibility = View.INVISIBLE
+            img.visibility = View.INVISIBLE
         }
     }
 
@@ -98,13 +99,16 @@ class MainActivity : AppCompatActivity() {
         val add = findViewById<FloatingActionButton>(R.id.fab_add)
         val capture = findViewById<FloatingActionButton>(R.id.fab_pic)
         val upload = findViewById<FloatingActionButton>(R.id.fab_upload)
+        val img = findViewById<FloatingActionButton>(R.id.fab_galery)
         if (!clicked){
             upload.startAnimation(fromBottom)
             capture.startAnimation(fromBottom)
+            img.startAnimation(fromBottom)
             add.startAnimation(rotateOpen)
         }else{
             upload.startAnimation(toBottom)
             capture.startAnimation(toBottom)
+            img.startAnimation(toBottom)
             add.startAnimation(rotateClose)
         }
     }
@@ -122,15 +126,15 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("QueryPermissionsNeeded")
     private fun dispatchTakePictureIntent(){
         val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        if(takePictureIntent.resolveActivity(baseContext.packageManager) != null){
+        if(takePictureIntent.resolveActivity(packageManager) != null){
             var photoFile: File? = null
             try{
                 photoFile = createImageFile()
             }catch (ex: IOException){}
             if(photoFile != null){
                 try {
-                    val photoURI = FileProvider.getUriForFile(baseContext,
-                    "com.example.camera.provider", photoFile)
+                    val photoURI = FileProvider.getUriForFile(this,
+                    "com.example.android.provider", photoFile)
                     Toast.makeText(baseContext, photoURI.path, Toast.LENGTH_SHORT).show()
                     takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
                     startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
@@ -147,9 +151,9 @@ class MainActivity : AppCompatActivity() {
     @Throws(IOException::class)
     private fun createImageFile(): File {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
-        val storageDir : File? = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
         return File.createTempFile(
-            "JPEG_$timeStamp",
+            timeStamp,
             ".jpg",
             storageDir
         ).apply {
@@ -159,10 +163,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        val imageView = findViewById<ImageView>(R.id.picture)
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             val imageBitmap = data?.extras?.get("data") as Bitmap
-            val imageView = findViewById<ImageView>(R.id.picture)
             imageView.setImageBitmap(imageBitmap)
+        }else if(requestCode == REQUEST_IMAGE_PICK && resultCode == RESULT_OK){
+            imageView.setImageURI(data?.data)
         }
+    }
+
+    private fun galleryAddPic() {
+        val galleryPictureIntent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.INTERNAL_CONTENT_URI)
+        galleryPictureIntent.type = "image/*"
+
+        startActivityForResult(Intent.createChooser(galleryPictureIntent, "Select Picture"), REQUEST_IMAGE_PICK)
     }
 }
