@@ -1,8 +1,10 @@
 package com.example.camera
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
@@ -14,6 +16,8 @@ import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.io.File
@@ -79,6 +83,7 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+
     private fun setVisibility(clicked: Boolean) {
         val capture = findViewById<FloatingActionButton>(R.id.fab_pic)
         val upload = findViewById<FloatingActionButton>(R.id.fab_upload)
@@ -123,24 +128,34 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    @SuppressLint("QueryPermissionsNeeded")
-    @Throws(IOException::class)
     private fun dispatchTakePictureIntent(){
-        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        if(takePictureIntent.resolveActivity(packageManager) != null){
-            var photoFile: File? = null
-            try{
-                photoFile = createImageFile()
-            }catch (ex: IOException){}
-            if(photoFile != null){
-                try {
-                    val photoURI = FileProvider.getUriForFile(this,
-                    "com.example.camera.provider", photoFile)
-                    Toast.makeText(baseContext, photoURI.path, Toast.LENGTH_SHORT).show()
-                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
-                    startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
-                }catch (e: Exception){
-                    e.printStackTrace()
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CAMERA
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                0
+            )
+        } else {
+            Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
+                takePictureIntent.resolveActivity(packageManager)?.also {
+                    val photoFile: File? = try {
+                        createImageFile()
+                    } catch (ex: IOException) {
+                        null
+                    }
+                    photoFile?.also {
+                        val photoURI: Uri = FileProvider.getUriForFile(
+                            this,
+                            "com.example.camera.provider",
+                            it
+                        )
+                        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                        startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
+                    }
                 }
             }
         }
@@ -176,7 +191,6 @@ class MainActivity : AppCompatActivity() {
     private fun galleryAddPic() {
         val galleryPictureIntent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.INTERNAL_CONTENT_URI)
         galleryPictureIntent.type = "image/*"
-
         startActivityForResult(Intent.createChooser(galleryPictureIntent, "Select Picture"), REQUEST_IMAGE_PICK)
     }
 }
