@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private var clicked = false;
+    private var clicked = false
     private val REQUEST_IMAGE_CAPTURE = 1
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,7 +67,12 @@ class MainActivity : AppCompatActivity() {
         }
         capture.setOnClickListener{
 //            Toast.makeText(this, "Capture a Picture", Toast.LENGTH_SHORT).show()
-            dispatchTakePictureIntent()
+            try {
+                dispatchTakePictureIntent()
+            }catch (e: ActivityNotFoundException){
+                e.printStackTrace()
+            }
+
 
         }
         upload.setOnClickListener{
@@ -109,26 +114,28 @@ class MainActivity : AppCompatActivity() {
         try {
             startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
         } catch (e: ActivityNotFoundException) {
-            // display error state to the user
+            e.printStackTrace()
         }
     }
 
 
     @SuppressLint("QueryPermissionsNeeded")
     private fun dispatchTakePictureIntent(){
-        Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
-            takePictureIntent.resolveActivity(packageManager)?.also {
-                val photoFile : File? = try {
-                    createImageFile()
-                }catch (ex: IOException){null}
-                photoFile?.also{
-                    val photoURI: Uri? = FileProvider.getUriForFile(
-                        this,
-                        "com.example.camera.provider",
-                        it
-                    )
+        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        if(takePictureIntent.resolveActivity(baseContext.packageManager) != null){
+            var photoFile: File? = null
+            try{
+                photoFile = createImageFile()
+            }catch (ex: IOException){}
+            if(photoFile != null){
+                try {
+                    val photoURI = FileProvider.getUriForFile(baseContext,
+                    "com.example.camera.provider", photoFile)
+                    Toast.makeText(baseContext, photoURI.path, Toast.LENGTH_SHORT).show()
                     takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
                     startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
+                }catch (e: Exception){
+                    e.printStackTrace()
                 }
             }
         }
@@ -142,7 +149,7 @@ class MainActivity : AppCompatActivity() {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
         val storageDir : File? = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
         return File.createTempFile(
-            "JPEG_$()timeStamp_",
+            "JPEG_$timeStamp",
             ".jpg",
             storageDir
         ).apply {
