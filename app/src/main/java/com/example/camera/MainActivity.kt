@@ -124,6 +124,7 @@ class MainActivity : AppCompatActivity() {
 
 
     @SuppressLint("QueryPermissionsNeeded")
+    @Throws(IOException::class)
     private fun dispatchTakePictureIntent(){
         val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
         if(takePictureIntent.resolveActivity(packageManager) != null){
@@ -134,7 +135,7 @@ class MainActivity : AppCompatActivity() {
             if(photoFile != null){
                 try {
                     val photoURI = FileProvider.getUriForFile(this,
-                    "com.example.android.provider", photoFile)
+                    "com.example.camera.provider", photoFile)
                     Toast.makeText(baseContext, photoURI.path, Toast.LENGTH_SHORT).show()
                     takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
                     startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
