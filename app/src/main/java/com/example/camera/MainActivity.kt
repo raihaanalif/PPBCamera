@@ -22,6 +22,7 @@ import androidx.core.content.FileProvider
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.io.File
 import java.io.IOException
+import java.lang.Exception
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -54,7 +55,8 @@ class MainActivity : AppCompatActivity() {
     private var clicked = false
     private val REQUEST_IMAGE_CAPTURE = 1
     private val REQUEST_IMAGE_PICK = 2
-    private var currentPhotoPath: String? = null
+    private val REQUEST_TAKE_PICTURE = 3
+    private var currentPhotoPath=""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +65,7 @@ class MainActivity : AppCompatActivity() {
         val capture = findViewById<FloatingActionButton>(R.id.fab_pic)
         val upload = findViewById<FloatingActionButton>(R.id.fab_upload)
         val img = findViewById<FloatingActionButton>(R.id.fab_galery)
+        val save = findViewById<FloatingActionButton>(R.id.fab_save)
 
         add.setOnClickListener{
             setVisibility(clicked)
@@ -71,10 +74,8 @@ class MainActivity : AppCompatActivity() {
             (!clicked).also { clicked = it }
         }
         capture.setOnClickListener{
-//          Toast.makeText(this, "Capture a Picture", Toast.LENGTH_SHORT).show()
             dispatchTakePictureIntent()
-
-
+//          Toast.makeText(this, "Capture a Picture", Toast.LENGTH_SHORT).show()
         }
         upload.setOnClickListener{
             setPictureInApp()
@@ -82,23 +83,27 @@ class MainActivity : AppCompatActivity() {
         img.setOnClickListener{
             galleryAddPic()
         }
-
+        save.setOnClickListener{
+            savePicture()
+        }
     }
-
 
     private fun setVisibility(clicked: Boolean) {
         val capture = findViewById<FloatingActionButton>(R.id.fab_pic)
         val upload = findViewById<FloatingActionButton>(R.id.fab_upload)
         val img = findViewById<FloatingActionButton>(R.id.fab_galery)
+        val save = findViewById<FloatingActionButton>(R.id.fab_save)
         if(!clicked) {
             capture.visibility = View.VISIBLE
             upload.visibility= View.VISIBLE
             img.visibility = View.VISIBLE
+            save.visibility = View.VISIBLE
         }
          else{
             capture.visibility = View.INVISIBLE
             upload.visibility = View.INVISIBLE
             img.visibility = View.INVISIBLE
+            save.visibility = View.INVISIBLE
         }
     }
 
@@ -107,15 +112,20 @@ class MainActivity : AppCompatActivity() {
         val capture = findViewById<FloatingActionButton>(R.id.fab_pic)
         val upload = findViewById<FloatingActionButton>(R.id.fab_upload)
         val img = findViewById<FloatingActionButton>(R.id.fab_galery)
+        val save = findViewById<FloatingActionButton>(R.id.fab_save)
         if (!clicked){
             upload.startAnimation(fromBottom)
             capture.startAnimation(fromBottom)
             img.startAnimation(fromBottom)
+            save.startAnimation(fromBottom)
+
             add.startAnimation(rotateOpen)
         }else{
             upload.startAnimation(toBottom)
             capture.startAnimation(toBottom)
             img.startAnimation(toBottom)
+            save.startAnimation(toBottom)
+
             add.startAnimation(rotateClose)
         }
     }
@@ -130,43 +140,35 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun dispatchTakePictureIntent(){
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.CAMERA
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                0
-            )
-        } else {
-            Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
-                takePictureIntent.resolveActivity(packageManager)?.also {
-                    val photoFile: File? = try {
-                        createImageFile()
-                    } catch (ex: IOException) {
-                        null
-                    }
-                    photoFile?.also {
-                        val photoURI: Uri = FileProvider.getUriForFile(
-                            this,
-                            "com.example.camera.fileprovider",
-                            it
-                        )
-                        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
-                        startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
-                    }
-                }
-            }
+    @SuppressLint("QueryPermissionsNeeded")
+    private fun dispatchTakePictureIntent() {
+        val capturePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        try {
+          capturePictureIntent.resolveActivity(packageManager)?.also {
+              val photoFile: File? = try {
+                  createImageFile()
+              }catch (ex: IOException){
+                  null
+              }
+              photoFile?.also {
+                  val photoURI: Uri = FileProvider.getUriForFile(
+                      this,
+                      "com.example.camera.fileprovider",
+                      it
+                  )
+                  capturePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                  startActivityForResult(capturePictureIntent, REQUEST_TAKE_PICTURE)
+              }
+          }
+        } catch (e: ActivityNotFoundException) {
+            e.printStackTrace()
         }
     }
 
     @SuppressLint("SimpleDateFormat")
     @Throws(IOException::class)
     private fun createImageFile(): File {
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
+        val timeStamp = SimpleDateFormat("yyyyMMddHHmmss").format(Date())
         val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
         return File.createTempFile(
             "JPEG_" + timeStamp + "_",
@@ -192,5 +194,20 @@ class MainActivity : AppCompatActivity() {
         val galleryPictureIntent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.INTERNAL_CONTENT_URI)
         galleryPictureIntent.type = "image/*"
         startActivityForResult(Intent.createChooser(galleryPictureIntent, "Select Picture"), REQUEST_IMAGE_PICK)
+    }
+
+    @Throws(IOException::class)
+    private fun savePicture() {
+//        try {
+//            Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).also { galleryIntent ->
+//                val f = File(currentPhotoPath)
+//                galleryIntent.data = Uri.fromFile(f)
+//                sendBroadcast(galleryIntent)
+//                Toast.makeText(this, "This Picture is Saved", Toast.LENGTH_SHORT).show()
+//            }
+//        }catch (e: Exception){
+//            Toast.makeText(this, "This Picture Failed to Saved", Toast.LENGTH_SHORT).show()
+//        }
+
     }
 }

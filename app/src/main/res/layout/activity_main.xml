@@ -68,4 +68,17 @@
         app:layout_constraintBottom_toTopOf="@id/fab_upload"
         app:layout_constraintEnd_toEndOf="@id/fab_add"
         android:contentDescription="TODO" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_save"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:focusable="true"
+        android:clickable="true"
+        android:visibility="invisible"
+        app:srcCompat="@drawable/ic_baseline_save_alt_24"
+        app:layout_constraintBottom_toTopOf="@id/fab_galery"
+        app:layout_constraintEnd_toEndOf="@id/fab_add"
+        android:contentDescription="TODO" />
 </androidx.constraintlayout.widget.ConstraintLayout>
