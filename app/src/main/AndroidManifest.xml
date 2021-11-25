@@ -4,6 +4,7 @@
     package="com.example.camera">
     <uses-feature android:name="android.hardware.camera"
         android:required="true" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-feature
@@ -31,7 +32,7 @@
         </activity>
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.example.camera.fileprovider"
+            android:authorities="com.example.camera.provider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

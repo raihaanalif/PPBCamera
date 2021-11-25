@@ -6,7 +6,9 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.icu.text.CaseMap
 import android.net.Uri
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Environment
@@ -19,7 +21,19 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import com.example.camera.databinding.ActivityMainBinding
+import com.google.android.gms.tasks.Continuation
+import com.google.android.gms.tasks.Task
+import com.google.android.gms.tasks.Tasks
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
+import com.google.firebase.storage.UploadTask
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.lang.Exception
@@ -57,6 +71,11 @@ class MainActivity : AppCompatActivity() {
     private val REQUEST_IMAGE_PICK = 2
     private val REQUEST_TAKE_PICTURE = 3
     private var currentPhotoPath=""
+    private val FILE_NAME = "photo.jpg"
+    private var filePath: Uri? = null
+    private var firebaseStore: FirebaseStorage? = null
+    private var storageReferences: StorageReference? = null
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,7 +84,10 @@ class MainActivity : AppCompatActivity() {
         val capture = findViewById<FloatingActionButton>(R.id.fab_pic)
         val upload = findViewById<FloatingActionButton>(R.id.fab_upload)
         val img = findViewById<FloatingActionButton>(R.id.fab_galery)
-        val save = findViewById<FloatingActionButton>(R.id.fab_save)
+//        val save = findViewById<FloatingActionButton>(R.id.fab_save)
+
+        firebaseStore = FirebaseStorage.getInstance()
+        storageReferences = FirebaseStorage.getInstance().reference
 
         add.setOnClickListener{
             setVisibility(clicked)
@@ -74,8 +96,15 @@ class MainActivity : AppCompatActivity() {
             (!clicked).also { clicked = it }
         }
         capture.setOnClickListener{
-            dispatchTakePictureIntent()
-//          Toast.makeText(this, "Capture a Picture", Toast.LENGTH_SHORT).show()
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
+                if(checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED){
+                    val permission = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    requestPermissions(permission, 101)
+                }
+                else{
+                    dispatchTakePictureIntent()
+                }
+            }
         }
         upload.setOnClickListener{
             setPictureInApp()
@@ -83,27 +112,27 @@ class MainActivity : AppCompatActivity() {
         img.setOnClickListener{
             galleryAddPic()
         }
-        save.setOnClickListener{
-            savePicture()
-        }
+//        save.setOnClickListener{
+//            savePicture()
+//        }
     }
 
     private fun setVisibility(clicked: Boolean) {
         val capture = findViewById<FloatingActionButton>(R.id.fab_pic)
         val upload = findViewById<FloatingActionButton>(R.id.fab_upload)
         val img = findViewById<FloatingActionButton>(R.id.fab_galery)
-        val save = findViewById<FloatingActionButton>(R.id.fab_save)
+//        val save = findViewById<FloatingActionButton>(R.id.fab_save)
         if(!clicked) {
             capture.visibility = View.VISIBLE
             upload.visibility= View.VISIBLE
             img.visibility = View.VISIBLE
-            save.visibility = View.VISIBLE
+//            save.visibility = View.VISIBLE
         }
          else{
             capture.visibility = View.INVISIBLE
             upload.visibility = View.INVISIBLE
             img.visibility = View.INVISIBLE
-            save.visibility = View.INVISIBLE
+//            save.visibility = View.INVISIBLE
         }
     }
 
@@ -112,19 +141,19 @@ class MainActivity : AppCompatActivity() {
         val capture = findViewById<FloatingActionButton>(R.id.fab_pic)
         val upload = findViewById<FloatingActionButton>(R.id.fab_upload)
         val img = findViewById<FloatingActionButton>(R.id.fab_galery)
-        val save = findViewById<FloatingActionButton>(R.id.fab_save)
+//        val save = findViewById<FloatingActionButton>(R.id.fab_save)
         if (!clicked){
             upload.startAnimation(fromBottom)
             capture.startAnimation(fromBottom)
             img.startAnimation(fromBottom)
-            save.startAnimation(fromBottom)
+//            save.startAnimation(fromBottom)
 
             add.startAnimation(rotateOpen)
         }else{
             upload.startAnimation(toBottom)
             capture.startAnimation(toBottom)
             img.startAnimation(toBottom)
-            save.startAnimation(toBottom)
+//            save.startAnimation(toBottom)
 
             add.startAnimation(rotateClose)
         }
@@ -139,44 +168,55 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
     @SuppressLint("QueryPermissionsNeeded")
     private fun dispatchTakePictureIntent() {
-        val capturePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        try {
-          capturePictureIntent.resolveActivity(packageManager)?.also {
-              val photoFile: File? = try {
-                  createImageFile()
-              }catch (ex: IOException){
-                  null
-              }
-              photoFile?.also {
-                  val photoURI: Uri = FileProvider.getUriForFile(
-                      this,
-                      "com.example.camera.fileprovider",
-                      it
-                  )
-                  capturePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
-                  startActivityForResult(capturePictureIntent, REQUEST_TAKE_PICTURE)
-              }
-          }
-        } catch (e: ActivityNotFoundException) {
-            e.printStackTrace()
+//        Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
+//            takePictureIntent.resolveActivity(packageManager)?.also {
+//                val photoFile: File? = try {
+//                    createImageFile()
+//                } catch (ex: IOException) {
+//                    null
+//                }
+//                photoFile?.also {
+//                    val photoURI: Uri = FileProvider.getUriForFile(
+//                        this,
+//                        "com.example.camera.fileprovider",
+//                        it
+//                    )
+//                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+//                    startActivityForResult(takePictureIntent, REQUEST_TAKE_PICTURE)
+//                }
+//            }
+//        }
+        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        val filePhoto = getPhotoFile(FILE_NAME)
+        val providerFile = FileProvider.getUriForFile(this, "com.example.camera.provider", filePhoto)
+        takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, providerFile)
+        if(takePictureIntent.resolveActivity(packageManager) != null){
+            startActivityForResult(takePictureIntent, REQUEST_TAKE_PICTURE)
+            Toast.makeText(this, "Photo's Capture", Toast.LENGTH_SHORT).show()
+        }else{
+            Toast.makeText(this, "Camera couldn't Open", Toast.LENGTH_SHORT).show()
         }
     }
 
-    @SuppressLint("SimpleDateFormat")
-    @Throws(IOException::class)
-    private fun createImageFile(): File {
-        val timeStamp = SimpleDateFormat("yyyyMMddHHmmss").format(Date())
-        val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        return File.createTempFile(
-            "JPEG_" + timeStamp + "_",
-            ".jpg",
-            storageDir
-        ).apply {
-            currentPhotoPath = absolutePath
-        }
+//    @SuppressLint("SimpleDateFormat")
+//    @Throws(IOException::class)
+//    private fun createImageFile(): File {
+//        val timeStamp = SimpleDateFormat("yyyyMMddHHmmss").format(Date())
+//        val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+//        return File.createTempFile(
+//            "JPEG_" + timeStamp + "_",
+//            ".jpg",
+//            storageDir
+//        ).apply {
+//            currentPhotoPath = absolutePath
+//        }
+//    }
+
+    private fun getPhotoFile(fileName: String):File {
+        val directoryStorage = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File.createTempFile(fileName, ".jpg", directoryStorage)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -186,7 +226,12 @@ class MainActivity : AppCompatActivity() {
             val imageBitmap = data?.extras?.get("data") as Bitmap
             imageView.setImageBitmap(imageBitmap)
         }else if(requestCode == REQUEST_IMAGE_PICK && resultCode == RESULT_OK){
-            imageView.setImageURI(data?.data)
+            if(data != null){
+                filePath = data.data
+            }
+            val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, filePath)
+            uploadImage()
+            imageView.setImageBitmap(bitmap)
         }
     }
 
@@ -196,8 +241,42 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(Intent.createChooser(galleryPictureIntent, "Select Picture"), REQUEST_IMAGE_PICK)
     }
 
-    @Throws(IOException::class)
-    private fun savePicture() {
+    private fun uploadImage(){
+        if(filePath != null){
+            val ref = storageReferences?.child("uploads/" + UUID.randomUUID().toString())
+            val uploadTask = ref?.putFile(filePath!!)
+            val urlTask = uploadTask?.continueWithTask(Continuation { task ->
+                if (!task.isSuccessful){
+                    task.exception?.let { throw it }
+                }
+                return@Continuation ref.downloadUrl
+            })?.addOnCompleteListener{ task ->
+                if(task.isSuccessful){
+                    val downloadUri = task.result
+                    addUploadRecordToDb(downloadUri.toString())
+                    Toast.makeText(this, "Saved Photos is Success", Toast.LENGTH_SHORT).show()
+                }
+            }?.addOnFailureListener{}
+        }else{ Toast.makeText(this, "Please Upload an Image", Toast.LENGTH_SHORT).show() }
+    }
+
+    private fun addUploadRecordToDb(uri: String){
+        val db = FirebaseFirestore.getInstance()
+
+        val data = HashMap<String, Any>()
+        data["imageUri"] = uri
+
+        db.collection("posts")
+            .add(data)
+            .addOnSuccessListener { documentReference ->
+                Toast.makeText(this, "Saved to DataBase", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener{ e ->
+                Toast.makeText(this, "Error saving to DataBase", Toast.LENGTH_SHORT).show()
+            }
+    }
+//    @Throws(IOException::class)
+//    private fun savePicture() {
 //        try {
 //            Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).also { galleryIntent ->
 //                val f = File(currentPhotoPath)
@@ -208,6 +287,6 @@ class MainActivity : AppCompatActivity() {
 //        }catch (e: Exception){
 //            Toast.makeText(this, "This Picture Failed to Saved", Toast.LENGTH_SHORT).show()
 //        }
-
-    }
+//
+//    }
 }
